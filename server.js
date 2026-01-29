@@ -22,7 +22,7 @@ mongoose.connect('mongodb+srv://ciilanesalaad482561_db_user:ttx0RSDTs6dXdZv8@clu
 
 
 
-const messageschema = require('./model/Message');
+const messageschema = require('./model/message');
 
 // Middleware to authenticate token
 const authenticateToken = (req, res, next) => {
