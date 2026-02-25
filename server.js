@@ -8,16 +8,43 @@ const User = require('./model/User');
 const JWT_SECRET = 'your_jwt_secret_key'; // Replace with env variable in production
 
 const app = express();
-app.use(cors());
+
+// Custom CORS + Private Network Access handler
+app.use((req, res, next) => {
+    const origin = req.get('origin');
+    if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // If browser sent a private-network preflight request header, allow it
+    if (req.headers['access-control-request-private-network']) {
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    }
+
+    // Handle preflight
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+});
+
 app.use(express.json());
 
-// Connect to MongoDB
- mongoose.connect('mongodb+srv://ciilanesalaad482561_db_user:ttx0RSDTs6dXdZv8@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0').then(() => {
-    //mongoose.connect('mongodb://localhost:27017/portifolio').then(() => {
-    console.log('Connected to MongoDB');
-}).catch((err) => {
-    console.error('Error connecting to MongoDB:', err);
-});
+// Connect to MongoDB (try Atlas first, fallback to local)
+const atlasUri = 'mongodb+srv://ciilanesalaad482561_db_user:ttx0RSDTs6dXdZv8@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0';
+const localUri = 'mongodb://localhost:27017/portifolio';
+
+mongoose.connect(atlasUri)
+    .then(() => console.log('Connected to MongoDB Atlas'))
+    .catch((err) => {
+        console.error('Atlas connection failed, falling back to local MongoDB:', err);
+        return mongoose.connect(localUri);
+    })
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.error('Error connecting to MongoDB:', err));
 
 
 
