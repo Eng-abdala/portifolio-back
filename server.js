@@ -5,17 +5,23 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('./model/User');
 
-const JWT_SECRET = 'your_jwt_secret_key'; // Replace with env variable in production
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key'; // set JWT_SECRET in production
 
 const app = express();
 
 // Custom CORS + Private Network Access handler
+const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || ''; // comma separated list, e.g. https://example.com,https://app.vercel.app
+const allowedOrigins = allowedOriginsEnv.split(',').map(s => s.trim()).filter(Boolean);
+
 app.use((req, res, next) => {
     const origin = req.get('origin');
     if (origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Vary', 'Origin');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        // If ALLOWED_ORIGINS is configured, only allow matching origins
+        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+            res.setHeader('Vary', 'Origin');
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
+        }
     }
 
     res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
@@ -31,20 +37,26 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.json());
 
-// Connect to MongoDB (try Atlas first, fallback to local)
-const atlasUri = 'mongodb+srv://ciilanesalaad482561_db_user:ttx0RSDTs6dXdZv8@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0';
+// Connect to MongoDB
 const localUri = 'mongodb://localhost:27017/portifolio';
+const envUri = process.env.MONGODB_URI;
 
-mongoose.connect(atlasUri)
-    .then(() => console.log('Connected to MongoDB Atlas'))
-    .catch((err) => {
-        console.error('Atlas connection failed, falling back to local MongoDB:', err);
-        return mongoose.connect(localUri);
-    })
-    .then(() => console.log('Connected to MongoDB'))
-    .catch((err) => console.error('Error connecting to MongoDB:', err));
+if (envUri) {
+    mongoose.connect(envUri)
+        .then(() => console.log('Connected to MongoDB (env MONGODB_URI)'))
+        .catch((err) => console.error('Error connecting with MONGODB_URI:', err));
+} else {
+    const atlasUri = 'mongodb+srv://ciilanesalaad482561_db_user:ttx0RSDTs6dXdZv8@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0';
+    mongoose.connect(atlasUri)
+        .then(() => console.log('Connected to MongoDB Atlas'))
+        .catch((err) => {
+            console.error('Atlas connection failed, falling back to local MongoDB:', err);
+            return mongoose.connect(localUri);
+        })
+        .then(() => console.log('Connected to MongoDB'))
+        .catch((err) => console.error('Error connecting to MongoDB:', err));
+}
 
 
 
@@ -192,6 +204,7 @@ app.post('/api/dev/set-password', async (req, res) => {
     }
 });
 
-app.listen(5000, () => {
-    console.log('Server is running on http://localhost:5000');
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
