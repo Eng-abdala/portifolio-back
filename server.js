@@ -42,15 +42,12 @@ app.use((req, res, next) => {
 
 
 // Connect to MongoDB using your Atlas credentials (abdul:abdul22)
-mongoose.connect('mongodb+srv://ciilanesalaad482561_db_user:VUf986oSi3004c6z@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+mongoose.connect('mongodb+srv://ciilanesalaad482561_db_user:VUf986oSi3004c6z@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0')
 .then(() => {
-    console.log('Connected to MongoDB (atlas: abdul)');
+    console.log('Connected to MongoDB )');
 })
 .catch((error) => {
-    console.error('Error connecting to MongoDB (atlas: abdul):', error);
+    console.error('Error connecting to MongoDB:', error);
 });
 
 
