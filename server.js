@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 
 
 // Connect to MongoDB using a fixed connection string
-mongoose.connect('mongodb+srv://ciilanesalaad482561_db_user:ttx0RSDTs6dXdZv8@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0', {
+mongoose.connect('mongodb+srv://ciilanesalaad482561_db_user:CfrXk7YrITvN5Uaz@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0', {
     useNewUrlParser: true,  
     useUnifiedTopology: true
 })
@@ -167,7 +167,7 @@ app.post('/api/dev/set-password', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
