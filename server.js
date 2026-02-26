@@ -2,16 +2,19 @@ const mongoose = require('mongoose');
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const User = require('./model/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key'; // set JWT_SECRET in production
+// simple hard‑coded secret, no .env
+const JWT_SECRET = 'your_jwt_secret_key'; // change for production if needed
 
 const app = express();
 
+// Parse JSON bodies from frontend
+app.use(express.json());
+
 // Custom CORS + Private Network Access handler
-const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || ''; // comma separated list, e.g. https://example.com,https://app.vercel.app
-const allowedOrigins = allowedOriginsEnv.split(',').map(s => s.trim()).filter(Boolean);
+// no environment variable, list origins here if required
+const allowedOrigins = []; // e.g. ['https://example.com']
 
 app.use((req, res, next) => {
     const origin = req.get('origin');
@@ -38,25 +41,17 @@ app.use((req, res, next) => {
 });
 
 
-// Connect to MongoDB
-const localUri = 'mongodb://localhost:27017/portifolio';
-const envUri = process.env.MONGODB_URI;
-
-if (envUri) {
-    mongoose.connect(envUri)
-        .then(() => console.log('Connected to MongoDB (env MONGODB_URI)'))
-        .catch((err) => console.error('Error connecting with MONGODB_URI:', err));
-} else {
-    const atlasUri = 'mongodb+srv://ciilanesalaad482561_db_user:ttx0RSDTs6dXdZv8@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0';
-    mongoose.connect(atlasUri)
-        .then(() => console.log('Connected to MongoDB Atlas'))
-        .catch((err) => {
-            console.error('Atlas connection failed, falling back to local MongoDB:', err);
-            return mongoose.connect(localUri);
-        })
-        .then(() => console.log('Connected to MongoDB'))
-        .catch((err) => console.error('Error connecting to MongoDB:', err));
-}
+// Connect to MongoDB using a fixed connection string
+mongoose.connect('mongodb+srv://ciilanesalaad482561_db_user:ttx0RSDTs6dXdZv8@cluster0.gnx3g4f.mongodb.net/?appName=Cluster0', {
+    useNewUrlParser: true,  
+    useUnifiedTopology: true
+})
+.then(() => {
+    console.log('Connected to MongoDB');
+})
+.catch((error) => {
+    console.error('Error connecting to MongoDB:', error);
+});
 
 
 
@@ -84,12 +79,13 @@ app.post('/api/register', async (req, res) => {
         console.log('Register request body:', req.body);
         let { username, password } = req.body || {};
         username = typeof username === 'string' ? username.trim() : username;
-        password = typeof password === 'string' ? password : password;
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required' });
         }
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ username, password: hashedPassword });
+        const existing = await User.findOne({ username });
+        if (existing) return res.status(409).json({ error: 'Username already exists' });
+        // Store password as plaintext (development/simple mode)
+        const user = new User({ username, password });
         await user.save();
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
@@ -120,41 +116,8 @@ app.post('/api/login', async (req, res) => {
 
         const user = await User.findOne({ username: lookupUsername });
         if (!user) return res.status(404).json({ error: 'User not found' });
-
-        console.log('Found user for login:', {
-            username: user.username,
-            passwordIsHashed: typeof user.password === 'string' && user.password.startsWith('$2'),
-            passwordLength: user.password ? user.password.length : 0,
-        });
-
-        let validPassword = false;
-        try {
-            if (typeof user.password === 'string' && user.password.startsWith('$2')) {
-                validPassword = await bcrypt.compare(lookupPassword, user.password);
-                console.log('bcrypt.compare result:', validPassword);
-            } else {
-                // Possibly plaintext stored in DB
-                    console.log('Stored password does not appear hashed; comparing plaintext');
-                    const plaintextMatch = user.password === lookupPassword;
-                    console.log('Plaintext compare result:', plaintextMatch);
-                    if (plaintextMatch) {
-                        validPassword = true;
-                    try {
-                        const newHash = await bcrypt.hash(lookupPassword, 10);
-                        user.password = newHash;
-                        await user.save();
-                        console.log('Migrated plaintext password to bcrypt for user:', lookupUsername);
-                    } catch (upErr) {
-                        console.error('Error migrating plaintext password:', upErr);
-                    }
-                }
-            }
-        } catch (cmpErr) {
-            console.error('Password compare error:', cmpErr);
-        }
-
-        if (!validPassword) return res.status(401).json({ error: 'Invalid password' });
-
+        // Simple plaintext comparison (no hashing)
+        if (user.password !== lookupPassword) return res.status(401).json({ error: 'Invalid password' });
         const token = jwt.sign({ username: user.username }, JWT_SECRET, { expiresIn: '6h' });
         res.json({ token });
     } catch (error) {
@@ -194,8 +157,8 @@ app.post('/api/dev/set-password', async (req, res) => {
         if (!username || !password) return res.status(400).json({ error: 'username and password required' });
         const user = await User.findOne({ username: username.trim() });
         if (!user) return res.status(404).json({ error: 'User not found' });
-        const hashed = await bcrypt.hash(password, 10);
-        user.password = hashed;
+        // Set plaintext password (dev helper)
+        user.password = password;
         await user.save();
         res.json({ message: 'Password updated for user' });
     } catch (err) {
@@ -204,7 +167,7 @@ app.post('/api/dev/set-password', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
